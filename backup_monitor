@@ -1,0 +1,32 @@
+#!/bin/bash
+
+if [[ -z $1 ]];then
+echo "what is being backed up?"
+read bkup_loc
+else
+bkup_loc=$1
+fi
+bkup_loc_size=$(df -k $bkup_loc|tail -n 1|awk '{print $2}');
+bkup_loc_size="$bkup_loc_size'       '$bkup_loc";
+
+if [[ -z $2 ]];then
+echo "where is the new backup?"
+read bkup_file
+bkup_file_dir=$(echo $bkup_file|rev|cut -d "/" -f2-|rev)
+bkup_file_name=$(echo $bkup_file|rev|cut -d "/" -f1|rev)
+else
+bkup_file=$2
+bkup_file_dir=$(echo $bkup_file|rev|cut -d "/" -f2-|rev)
+bkup_file_name=$(echo $bkup_file|rev|cut -d "/" -f1|rev)
+fi
+
+function cleanup {
+#rm /tmp/"$bkup_file_name"_mon > /dev/null 2>&1
+echo ""
+}
+trap cleanup EXIT
+echo "cd $bkup_file_dir" > /tmp/"$bkup_file_name"_mon
+echo "du $bkup_file_name;" >> /tmp/"$bkup_file_name"_mon
+echo "echo $bkup_loc_size;" >> /tmp/"$bkup_file_name"_mon
+chmod +x /tmp/"$bkup_file_name"_mon
+watch -n 1 /tmp/"$bkup_file_name"_mon
