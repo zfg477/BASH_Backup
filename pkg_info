@@ -39,7 +39,7 @@ fi
 fi
 
 if [[ $1 == "-i" ]]; then
-OS=$(neofetch|grep OS|grep -v "Model" |awk '{print $2}');
+OS=$(cat /etc/os-release|grep "NAME"|grep -v "PRETTY_NAME"|grep -v CODENAME|cut -d '"' -f2- |cut -d '"' -f1|cut -d " " -f1);
 if [[ $OS == "Ubuntu" ]] || [[ $OS == Debian ]];then
 if [[ ! -d ./pkg_info/ ]];then
 if [[ ! -d ../pkg_info/ ]];then
