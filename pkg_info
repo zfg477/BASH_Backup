@@ -1,0 +1,94 @@
+#!/bin/bash
+
+fname=$(readlink -f $0|rev|cut -d "/" -f 1 |rev)
+
+if [[ -z $1 ]]; then
+echo "$fname usage [ -b  backup pkg info ] [ -i re-install pkg info ]"
+exit
+fi
+
+
+if [[ $1 == "-b" ]]; then
+
+OS=$(cat /etc/os-release|grep "NAME"|grep -v "PRETTY_NAME"|grep -v CODENAME|cut -d '"' -f2- |cut -d '"' -f1|cut -d " " -f1);
+if [[ $OS == "Ubuntu" ]] || [[ $OS == Debian ]];then
+mkdir ./pkg_info > /dev/null 2>&1;
+echo "" > ./pkg_info/installed.list
+cp $(readlink -f $0) ./pkg_info/;
+dpkg --get-selections | awk '{print $1}'>>./pkg_info/installed.list;
+cat ./pkg_info/installed.list | xargs apt show >> ./pkg_info/detailed.list 2>/dev/null;
+mkdir -p ./pkg_info/_etc_apt/>/dev/null && cp /etc/apt/* ./pkg_info/_etc_apt/ -r > /dev/null 2>&1;
+fi
+
+if [[ $OS == "Arch" ]]; then
+mkdir ./pkg_info > /dev/null 2>&1;
+echo "" > ./pkg_info/installed.list;
+echo "" > ./pkg_info/detailed.list;
+cp $(readlink -f $0) ./pkg_info/;
+
+pacman -Qqe >> ./pkg_info/installed.list
+#for OUTPUT in ./pkg_info/installed.list
+while IFS= read line
+do
+pkgname=$(echo $line | cut -d " " -f1)
+pacman -Qi $pkgname| grep 'Name\|Version\|Description\|Installed\|URL' >> ./pkg_info/detailed.list 2>/dev/null;
+#echo $pkgname
+done <"./pkg_info/installed.list"
+mkdir -p ./pkg_info/_etc_/>/dev/null && cp /etc/pacman* ./pkg_info/_etc_/ -r > /dev/null 2>&1;
+fi
+fi
+
+if [[ $1 == "-i" ]]; then
+OS=$(neofetch|grep OS|grep -v "Model" |awk '{print $2}');
+if [[ $OS == "Ubuntu" ]] || [[ $OS == Debian ]];then
+if [[ ! -d ./pkg_info/ ]];then
+if [[ ! -d ../pkg_info/ ]];then
+echo "Couldnt locate pkg_info directory"
+exit
+else
+sudo cp -rf ../pkg_info/_etc_apt/* /etc/apt/;
+sudo apt-get update;
+cat ../pkg_info/installed.list | xargs sudo apt-get --assume-yes install
+sudo apt-get --assume-yes upgrade;
+fi
+else
+sudo cp -rf ./pkg_info/_etc_apt/* /etc/apt/;
+sudo apt-get update;
+cat ./pkg_info/installed.list | xargs sudo apt-get --assume-yes install
+sudo apt-get --assume-yes upgrade;
+fi
+fi
+
+if [[ $OS == "Arch" ]]; then
+  if [[ ! -d ./pkg_info/ ]];then
+  if [[ ! -d ../pkg_info/ ]];then
+  echo "Couldnt locate pkg_info directory"
+  exit
+  else
+		echo "about to re-install continue?"
+		read
+    sudo cp -rf ../pkg_info/_etc_/* /etc/;
+    sudo pacman -Syy;
+		while IFS= read line
+		do
+		pkgname=$(echo $line | cut -d " " -f1)
+		sudo pacman --noconfirm -S $pkgname
+		done <"../pkg_info/installed.list"
+    sudo pacman -Syyu;
+    fi
+    else
+			echo "about to re-install continue?"
+			read
+      sudo cp -rf ./pkg_info/_etc_/* /etc/;
+      sudo pacman -Syy;
+			while IFS= read line
+			do
+			pkgname=$(echo $line | cut -d " " -f1)
+			sudo pacman --noconfirm -S $pkgname
+			done <"./pkg_info/installed.list"
+      sudo pacman -Syyu;
+    fi
+    fi
+
+
+fi
